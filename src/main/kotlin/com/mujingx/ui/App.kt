@@ -48,7 +48,7 @@ import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.*
 import com.darkrockstudios.libraries.mpfilepicker.FilePicker
-import com.movcontext.MuJing.BuildConfig
+import com.mujingx.MuJing.BuildConfig
 import com.mujingx.data.VocabularyType
 import com.mujingx.data.getFamiliarVocabularyFile
 import com.mujingx.data.getHardVocabularyFile

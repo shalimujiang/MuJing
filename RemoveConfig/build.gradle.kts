@@ -8,7 +8,7 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
-group = "com.movcontext"
+group = "com.mujingx"
 version = "1.0"
 
 repositories {

@@ -21,7 +21,7 @@ plugins {
     id("com.github.gmazzo.buildconfig") version "5.3.5"
 }
 
-group = "com.movcontext"
+group = "com.mujingx"
 version = "2.9.1"
 
 buildConfig {

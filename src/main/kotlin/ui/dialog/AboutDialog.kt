@@ -194,7 +194,7 @@ fun AboutDialog(
                                 Dependency(
                                     name = "FFmpeg",
                                     url = "https://ffmpeg.org/",
-                                    version = "7.0",
+                                    version = "8.0",
                                     license = LGPL,
                                 )
                                 Dependency(
@@ -420,9 +420,9 @@ fun AboutDialog(
                                     license = LGPL,
                                 )
                                 Dependency(
-                                    name = "Multiplatform File Picker",
-                                    url = "https://github.com/Wavesonics/compose-multiplatform-file-picker",
-                                    version = "1.0.0",
+                                    name = "FileKit",
+                                    url = "https://github.com/vinceglb/FileKit",
+                                    version = "0.10.0",
                                     license = MIT,
                                 )
                                 Row(horizontalArrangement = Arrangement.SpaceBetween,

@@ -20,6 +20,8 @@
 package ui.dialog
 
 import androidx.compose.foundation.VerticalScrollbar
+import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.snapping.SnapPosition
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.rememberScrollbarAdapter
@@ -28,19 +30,26 @@ import androidx.compose.material.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogWindow
 import androidx.compose.ui.window.WindowPosition
 import androidx.compose.ui.window.rememberDialogState
 import data.GitHubRelease
+import data.MujingRelease
 import io.ktor.client.*
+import io.ktor.client.plugins.UserAgent
+import io.ktor.client.plugins.timeout
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
+import jdk.internal.agent.resources.agent
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -82,36 +91,47 @@ fun UpdateDialog(
             var releaseTagName by remember { mutableStateOf("") }
 
             suspend fun detectingUpdates(version: String) {
-                val client = HttpClient()
-                val url = "https://api.github.com/repos/tangshimin/mujing/releases/latest"
-                val headerName = "Accept"
-                val headerValue = "application/vnd.github.v3+json"
+                val client = HttpClient {
+                    install(io.ktor.client.plugins.HttpTimeout) {
+                        requestTimeoutMillis = 5000
+                        connectTimeoutMillis = 5000
+                        socketTimeoutMillis = 5000
+                    }
+                    install(UserAgent) {
+                        val v = if(version.startsWith("v")) version.substring(1) else version
+                        agent = "MuJing/$v (${System.getProperty("os.name")} ${System.getProperty("os.version")}; )"
 
+                    }
+                    expectSuccess = false // 不自动抛出异常
+                }
+
+                // 优先访问mujingx.com版本检测API
+                    val mujingApiUrl = "https://mujingx.com/api/version/latest"
+                val githubApiUrl = "https://api.github.com/repos/tangshimin/mujing/releases/latest"
+                val githubHeaderName = "Accept"
+                val githubHeaderValue = "application/vnd.github.v3+json"
+
+                // 首先尝试mujingx.com API
                 try {
-                    val response: HttpResponse = client.get(url) {
-                        header(headerName, headerValue)
+                    val mujingResponse: HttpResponse = client.get(mujingApiUrl) {
+                        timeout {
+                            requestTimeoutMillis = 5000 // 5秒超时
+                        }
                     }
 
                     detecting = false
-                    when (response.status) {
+                    when (mujingResponse.status) {
                         HttpStatusCode.OK -> {
-                            val string = response.bodyAsText()
+                            val string = mujingResponse.bodyAsText()
                             val format = Json { ignoreUnknownKeys = true }
-                            val releases = format.decodeFromString<GitHubRelease>(string)
+                            val releases = format.decodeFromString<MujingRelease>(string)
                             val releaseVersion = ComparableVersion(releases.tag_name)
                             val currentVersion = ComparableVersion(version)
                             body = if (releaseVersion > currentVersion) {
                                 downloadable = true
                                 releaseTagName = releases.tag_name
-                                var releaseContent = "最新版本：${releases.tag_name}\n"
-                                val contentBody = releases.body
-                                if (contentBody != null) {
-                                    val end = contentBody.indexOf("---")
-                                    if (end != -1) {
-                                        releaseContent += contentBody.substring(0, end)
-                                    }
-                                }
-                                releaseContent
+                                val contentBody = releases.body + ""
+                                contentBody
                             } else {
                                 downloadable = false
                                 "没有可用更新"
@@ -128,8 +148,57 @@ fun UpdateDialog(
                         }
                     }
                 } catch (exception: Exception) {
-                    detecting = false
-                    body = exception.toString()
+                    // mujingx.com API失败，回退到GitHub API
+                    println("mujingx.com API failed, falling back to GitHub API: ${exception.message}")
+
+                    // 回退到GitHub API
+                    try {
+                        val githubResponse: HttpResponse = client.get(githubApiUrl) {
+                            header(githubHeaderName, githubHeaderValue)
+                            timeout {
+                                requestTimeoutMillis = 5000 // 5秒超时
+                            }
+                        }
+
+                        detecting = false
+                        when (githubResponse.status) {
+                            HttpStatusCode.OK -> {
+                                val string = githubResponse.bodyAsText()
+                                val format = Json { ignoreUnknownKeys = true }
+                                val releases = format.decodeFromString<GitHubRelease>(string)
+                                val releaseVersion = ComparableVersion(releases.tag_name)
+                                val currentVersion = ComparableVersion(version)
+                                body = if (releaseVersion > currentVersion) {
+                                    downloadable = true
+                                    releaseTagName = releases.tag_name
+                                    var releaseContent = "最新版本：${releases.tag_name}\n"
+                                    val contentBody = releases.body
+                                    if (contentBody != null) {
+                                        val end = contentBody.indexOf("---")
+                                        if (end != -1) {
+                                            releaseContent += contentBody.substring(0, end)
+                                        }
+                                    }
+                                    releaseContent
+                                } else {
+                                    downloadable = false
+                                    "没有可用更新"
+                                }
+                            }
+                            HttpStatusCode.NotFound -> {
+                                body = "网页没找到"
+                            }
+                            HttpStatusCode.InternalServerError -> {
+                                body = "服务器错误"
+                            }
+                            else -> {
+                                body = "未知错误"
+                            }
+                        }
+                    } catch (githubException: Exception) {
+                        detecting = false
+                        body = "检查更新失败：${githubException.message}"
+                    }
                 }
             }
 
@@ -150,23 +219,35 @@ fun UpdateDialog(
                     verticalArrangement = Arrangement.Center,
                     modifier = Modifier.fillMaxSize().verticalScroll(stateVertical)
                 ) {
-                    Row(
-                        horizontalArrangement = Arrangement.Center,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text("当前版本：$version")
-                    }
+
                     Row(
                         horizontalArrangement = Arrangement.Center,
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text("自动检查更新")
-                        Checkbox(
-                            checked = autoUpdate,
-                            onCheckedChange = { setAutoUpdate(it) }
+                        Row(
+                            horizontalArrangement = Arrangement.Start,
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.width(160.dp)
+                        ){
+                            Text("自动检查更新")
+                            Checkbox(
+                                checked = autoUpdate,
+                                onCheckedChange = { setAutoUpdate(it) }
+                            )
+                        }
+                    }
+
+                    Row(
+                        horizontalArrangement = Arrangement.Center,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("当前版本：$version",
+                            textAlign = TextAlign.Left,
+                            modifier = Modifier.width(160.dp)
                         )
                     }
+
                     if (latestVersion.isEmpty() && detecting) {
                         Row(
                             horizontalArrangement = Arrangement.Center,
@@ -184,15 +265,31 @@ fun UpdateDialog(
                         }
                     }
 
-                    Row(
-                        horizontalArrangement = Arrangement.Center,
-                        modifier = Modifier.fillMaxWidth().padding(start = 20.dp,top = 10.dp,end = 20.dp)
-                    ) {
+                    Column (
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Top,
+                        modifier = Modifier.fillMaxWidth()
+                            .padding(start = 20.dp,top = 10.dp,end = 20.dp)
+                    ){
                         if(latestVersion.isNotEmpty()){
-                            val note = "最新版本：$latestVersion\n$releaseNote"
-                            Text(text = note)
+                            Text(text = "最新版本：$latestVersion\n",
+                                textAlign = TextAlign.Left,
+                                modifier = Modifier.width(160.dp)
+                            )
+                            Text(
+                                text = releaseNote,
+                                textAlign = TextAlign.Left,
+                            )
                         }else{
-                            Text(body)
+                            Text(text = "最新版本：$releaseTagName\n",
+                                textAlign = TextAlign.Left,
+                                modifier = Modifier.width(160.dp)
+                            )
+                            Text(
+                                text = body,
+                                textAlign = TextAlign.Left,
+//                                modifier = Modifier.width(160.dp)
+                            )
                         }
                     }
 
@@ -244,21 +341,67 @@ fun UpdateDialog(
 
 /**
  * 自动检查更新
+ * 优先级：先访问mujingx.com，如果失败则回退到GitHub.com
  */
 @OptIn(ExperimentalSerializationApi::class)
 suspend fun autoDetectingUpdates(version: String): Triple<Boolean, String, String> {
-    val client = HttpClient()
-    val url = "https://api.github.com/repos/tangshimin/mujing/releases/latest"
-    val headerName = "Accept"
-    val headerValue = "application/vnd.github.v3+json"
+    val client = HttpClient {
+        install(io.ktor.client.plugins.HttpTimeout) {
+            requestTimeoutMillis = 5000
+            connectTimeoutMillis = 5000
+            socketTimeoutMillis = 5000
+        }
+        install(UserAgent) {
+            val v = if(version.startsWith("v")) version.substring(1) else version
+            agent = "MuJing/$v (${System.getProperty("os.name")} ${System.getProperty("os.version")}; )"
 
+        }
+        expectSuccess = false // 不自动抛出异常
+    }
+
+    // 优先访问mujingx.com版本检测API
+    val mujingApiUrl = "https://mujingx.com/api/version/latest"
+    val githubApiUrl = "https://api.github.com/repos/tangshimin/mujing/releases/latest"
+    val githubHeaderName = "Accept"
+    val githubHeaderValue = "application/vnd.github.v3+json"
+
+    // 首先尝试mujingx.com API
     try {
-        val response: HttpResponse = client.get(url) {
-            header(headerName, headerValue)
+        val mujingResponse: HttpResponse = client.get(mujingApiUrl) {
+            timeout {
+                requestTimeoutMillis = 5000 // 5秒超时
+            }
         }
 
-        if (response.status == HttpStatusCode.OK) {
-            val string = response.bodyAsText()
+        if (mujingResponse.status == HttpStatusCode.OK) {
+            val string = mujingResponse.bodyAsText()
+            val format = Json { ignoreUnknownKeys = true }
+            val releases = format.decodeFromString<MujingRelease>(string)
+            val releaseVersion = ComparableVersion(releases.tag_name)
+            val currentVersion = ComparableVersion(version)
+            if (releaseVersion > currentVersion) {
+                var note = ""
+                val body = releases.body
+                if (releases.body != null) note += body
+                return Triple(true, releases.tag_name, note)
+            }
+        }
+    } catch (exception: Exception) {
+        // mujingx.com API失败，回退到GitHub API
+        println("mujingx.com API failed, falling back to GitHub API: ${exception.message}")
+    }
+
+    // 回退到GitHub API
+    try {
+        val githubResponse: HttpResponse = client.get(githubApiUrl) {
+            header(githubHeaderName, githubHeaderValue)
+            timeout {
+                requestTimeoutMillis = 5000 // 5秒超时
+            }
+        }
+
+        if (githubResponse.status == HttpStatusCode.OK) {
+            val string = githubResponse.bodyAsText()
             val format = Json { ignoreUnknownKeys = true }
             val releases = format.decodeFromString<GitHubRelease>(string)
             val releaseVersion = ComparableVersion(releases.tag_name)

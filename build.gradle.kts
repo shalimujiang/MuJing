@@ -62,8 +62,8 @@ dependencies {
     implementation ("net.java.dev.jna:jna-platform:5.14.0")
     implementation ("ch.qos.logback:logback-classic:1.5.13")
     implementation("net.bramp.ffmpeg:ffmpeg:0.8.0")
-    implementation("io.github.vinceglb:filekit-dialogs:0.12.0")
-    implementation("io.github.vinceglb:filekit-dialogs-compose:0.12.0")
+    implementation("io.github.vinceglb:filekit-dialogs:0.10.0")
+    implementation("io.github.vinceglb:filekit-dialogs-compose:0.10.0")
 
 
     // 如果需要 Compose UI 测试，保留这个

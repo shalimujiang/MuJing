@@ -570,6 +570,7 @@ fun MainContent(
                 appState.hardVocabulary.wordList.removeAt(index)
                 // 如果当前词库是困难词库，说明用户想把单词从困难词库（当前词库）删除
                 if(wordScreenState.vocabulary.name == "HardVocabulary"){
+                    wordScreenState.clearInputtedState()
                     wordScreenState.vocabulary.wordList.remove(currentWord)
                     wordScreenState.vocabulary.size = wordScreenState.vocabulary.wordList.size
                     try{

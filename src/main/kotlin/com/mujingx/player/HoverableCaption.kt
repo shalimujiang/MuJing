@@ -41,12 +41,19 @@ import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
 import com.mujingx.data.Dictionary
 import com.mujingx.data.Word
+import com.mujingx.data.deepCopy
+import com.mujingx.data.VocabularyType
+import com.mujingx.data.ExternalCaption
+import com.mujingx.data.loadMutableVocabulary
+import com.mujingx.data.saveVocabulary
+import com.mujingx.data.getFamiliarVocabularyFile
+import com.mujingx.data.loadVocabulary
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
 import com.mujingx.player.danmaku.DisplayMode
 import com.mujingx.player.danmaku.WordDetail
-import com.mujingx.tts.rememberAzureTTS
 
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
@@ -351,11 +358,15 @@ private fun renderCaptionLine(
 @Composable
 fun SubtitleHoverableCaption(
      content: String,
+     caption: com.mujingx.data.Caption,
      fontFamily: FontFamily,
      playerState: PlayerState,
+     wordScreenState: com.mujingx.ui.wordscreen.WordScreenState,
      playAudio: (String) -> Unit,
+     mediaPath: String = "",
+     showNotification: (String, Long) -> Unit = { _, _ -> },
 ){
-
+    val scope = rememberCoroutineScope()
 
     renderCaptionLine(
         line = content,
@@ -366,7 +377,169 @@ fun SubtitleHoverableCaption(
         playAudio = playAudio,
         playerState = playerState,
         onPopupHoverChanged ={},
-        addWord = {},
-        addToFamiliar = {}
+        addWord = { word ->
+            scope.launch {
+                try {
+                    // 检查词库路径是否存在
+                    if(wordScreenState.vocabularyPath.isEmpty()){
+                        showNotification("添加失败，\n要先在记忆单词界面选择一个词库，\n否则无法使用这个功能。\n", 3000L)
+                        return@launch
+                    }
+
+                    val newWord = word.deepCopy()
+
+                    // 添加字幕信息到单词（最多3个）
+                    if(newWord.captions.size < 3){
+                        val dataCaption = com.mujingx.data.Caption(
+                            start = caption.start,
+                            end = caption.end,
+                            content = caption.content
+                        )
+                        newWord.captions.add(dataCaption)
+                    }
+
+                    // 加载词库
+                    val vocabularyPath = wordScreenState.vocabularyPath
+                    val vocabulary = loadMutableVocabulary(vocabularyPath)
+
+                    // 检查词库类型
+                    if(vocabulary.name == "FamiliarVocabulary" || vocabulary.name == "HardVocabulary"){
+                        showNotification("单词记忆界面的词库是 ${vocabulary.name}, 无法添加单词。", 3000L)
+                        return@launch
+                    }
+
+                    // 如果词库是 SUBTITLES 类型且媒体路径不匹配，转换为外部字幕
+                    if(vocabulary.type == VocabularyType.SUBTITLES &&
+                       vocabulary.relateVideoPath != mediaPath){
+                        // 转换为 DOCUMENT 类型
+                        vocabulary.type = VocabularyType.DOCUMENT
+                        vocabulary.relateVideoPath = ""
+                        vocabulary.subtitlesTrackId = -1
+
+                        // 转换现有单词的字幕为外部字幕
+                        vocabulary.wordList.forEach { existingWord ->
+                            existingWord.captions.forEach { cap: com.mujingx.data.Caption ->
+                                val externalCaption = ExternalCaption(
+                                    relateVideoPath = "",
+                                    subtitlesTrackId = -1,
+                                    subtitlesName = vocabulary.name,
+                                    start = cap.start,
+                                    end = cap.end,
+                                    content = cap.content
+                                )
+                                existingWord.externalCaptions.add(externalCaption)
+                            }
+                            existingWord.captions.clear()
+                        }
+
+                        // 转换新单词的字幕为外部字幕
+                        newWord.captions.forEach { cap: com.mujingx.data.Caption ->
+                            val externalCaption = ExternalCaption(
+                                relateVideoPath = mediaPath,
+                                subtitlesTrackId = -1,
+                                subtitlesName = if(mediaPath.isNotEmpty()) java.io.File(mediaPath).name else "",
+                                start = cap.start,
+                                end = cap.end,
+                                content = cap.content
+                            )
+                            newWord.externalCaptions.add(externalCaption)
+                        }
+                        newWord.captions.clear()
+                    } else if(vocabulary.type == VocabularyType.DOCUMENT){
+                        // 如果是 DOCUMENT 类型，直接转换为外部字幕
+                        newWord.captions.forEach { cap: com.mujingx.data.Caption ->
+                            val externalCaption = ExternalCaption(
+                                relateVideoPath = mediaPath,
+                                subtitlesTrackId = -1,
+                                subtitlesName = if(mediaPath.isNotEmpty()) java.io.File(mediaPath).name else vocabulary.name,
+                                start = cap.start,
+                                end = cap.end,
+                                content = cap.content
+                            )
+                            newWord.externalCaptions.add(externalCaption)
+                        }
+                        newWord.captions.clear()
+                    }
+
+                    // 检查单词是否已存在
+                    if(vocabulary.wordList.contains(newWord)){
+                        showNotification("单词: ${newWord.value} 已经存在于词库:\n${vocabulary.name} 中。", 3000L)
+                        return@launch
+                    }
+
+                    // 添加单词
+                    vocabulary.wordList.add(newWord)
+                    vocabulary.size = vocabulary.wordList.size
+
+                    // 保存词库
+                    saveVocabulary(vocabulary.serializeVocabulary, vocabularyPath)
+
+                    // 更新 wordScreenState 中的词库
+                    wordScreenState.vocabulary = vocabulary
+
+                    showNotification("已添加单词: ${newWord.value} 到正在记忆的词库", 3000L)
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                    showNotification("添加单词失败: ${word.value}\n错误信息:${e.message}", 3000L)
+                }
+            }
+        },
+        addToFamiliar = { word ->
+            scope.launch {
+                try {
+                    val familiarWord = word.deepCopy()
+
+                    // 添加字幕信息到单词（最多3个）
+                    if(familiarWord.captions.size < 3){
+                        val dataCaption = com.mujingx.data.Caption(
+                            start = caption.start,
+                            end = caption.end,
+                            content = caption.content
+                        )
+                        familiarWord.captions.add(dataCaption)
+                    }
+
+                    // 转换为外部字幕
+                    familiarWord.captions.forEach { cap: com.mujingx.data.Caption ->
+                        val externalCaption = ExternalCaption(
+                            relateVideoPath = mediaPath,
+                            subtitlesTrackId = -1,
+                            subtitlesName = if(mediaPath.isNotEmpty()) java.io.File(mediaPath).name else "",
+                            start = cap.start,
+                            end = cap.end,
+                            content = cap.content
+                        )
+                        familiarWord.externalCaptions.add(externalCaption)
+                    }
+                    familiarWord.captions.clear()
+
+                    // 加载熟悉词库
+                    val file = getFamiliarVocabularyFile()
+                    val familiar = loadVocabulary(file.absolutePath)
+
+                    // 检查是否已存在
+                    if(familiar.wordList.contains(familiarWord)){
+                        showNotification("熟悉词库已经存在单词: ${familiarWord.value}", 3000L)
+                        return@launch
+                    }
+
+                    // 添加到熟悉词库
+                    familiar.wordList.add(familiarWord)
+                    familiar.size = familiar.wordList.size
+
+                    if(familiar.name.isEmpty()){
+                        familiar.name = "FamiliarVocabulary"
+                    }
+
+                    // 保存熟悉词库
+                    saveVocabulary(familiar, file.absolutePath)
+
+                    showNotification("已添加到熟悉词库: ${word.value}", 3000L)
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                    showNotification("保存到熟悉词库失败: ${word.value}\n错误信息:${e.message}", 3000L)
+                }
+            }
+        }
     )
 }

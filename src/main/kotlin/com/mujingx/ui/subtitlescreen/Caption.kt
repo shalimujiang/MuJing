@@ -84,12 +84,15 @@ fun Caption(
     multipleLines: MultipleLines,
     next: () -> Unit,
     playerState: PlayerState,
+    wordScreenState: com.mujingx.ui.wordscreen.WordScreenState,
     alpha: Float,
     keyEvent: (KeyEvent) -> Boolean,
     focusRequester: FocusRequester,
     selectable: Boolean = false,
     exitSelection: () -> Unit,
     playAudio: (String) -> Unit,
+    mediaPath: String = "",
+    showNotification: (String, Long) -> Unit = { _, _ -> },
 ) {
     val focusManager = LocalFocusManager.current
 
@@ -197,9 +200,13 @@ fun Caption(
 
         SubtitleHoverableCaption(
             content = captionContent,
+            caption = caption,
             fontFamily = monospace,
             playerState = playerState,
+            wordScreenState = wordScreenState,
             playAudio = playAudio,
+            mediaPath = mediaPath,
+            showNotification = showNotification,
         )
 
         // 快捷键 Ctrl + B 打开选择框

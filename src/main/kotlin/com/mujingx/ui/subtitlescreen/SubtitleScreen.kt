@@ -93,6 +93,8 @@ val videoFormatList = listOf("mp4","mkv")
 fun SubtitleScreen(
     subtitlesState: SubtitlesState,
     globalState: GlobalState,
+    playerState: PlayerState,
+    wordScreenState: com.mujingx.ui.wordscreen.WordScreenState,
     audioSet: MutableSet<String>,
     saveSubtitlesState: () -> Unit,
     saveGlobalState: () -> Unit,
@@ -135,7 +137,6 @@ fun SubtitleScreen(
 
     var showExtSubOptions by remember { mutableStateOf(false) }
     val extSubList = remember { mutableStateListOf<Pair<String, File>>() }
-    val playerState = rememberPlayerState()
     val pronunciation = rememberPronunciation()
     val azureTTS = rememberAzureTTS()
 
@@ -913,12 +914,15 @@ fun SubtitleScreen(
                                         multipleLines = multipleLines,
                                         next = next,
                                         playerState = playerState,
+                                        wordScreenState = wordScreenState,
                                         alpha = alpha,
                                         keyEvent = textFieldKeyEvent,
                                         focusRequester = textFieldRequester,
                                         selectable = selectable,
                                         exitSelection = {selectable = false},
-                                        playAudio = playAudio
+                                        playAudio = playAudio,
+                                        mediaPath = subtitlesState.mediaPath,
+                                        showNotification = subtitlesState::showNotification,
                                     )
 
                                     Row(Modifier.width(48.dp).height(IntrinsicSize.Max)) {
@@ -1146,6 +1150,31 @@ fun SubtitleScreen(
                 }
             }
             RemoveButton( onClick = {removeSubtitles()},toolTip = "关闭当前字幕")
+        }
+
+        // 通知消息
+        if (subtitlesState.showNotification) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(top = if(isMacOS())54.dp else 10.dp ,end = 10.dp)
+
+            ) {
+                Surface(
+                    modifier = Modifier.widthIn(max = 400.dp),
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp),
+                    color = MaterialTheme.colors.surface.copy(alpha = 0.95f),
+                    border = BorderStroke(1.dp, MaterialTheme.colors.onSurface.copy(alpha = 0.12f)),
+                    elevation = 8.dp
+                ) {
+                    Text(
+                        text = subtitlesState.notificationMessage,
+                        style = MaterialTheme.typography.body1,
+                        color = MaterialTheme.colors.onSurface,
+                        modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp)
+                    )
+                }
+            }
         }
 
 

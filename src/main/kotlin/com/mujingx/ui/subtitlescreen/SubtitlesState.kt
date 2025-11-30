@@ -110,6 +110,31 @@ class SubtitlesState(dataSubtitlesState: DataSubtitlesState) {
         dataSubtitlesState.videoHeight)
     )
 
+    /** 通知消息 */
+    var notificationMessage by mutableStateOf("")
+
+    /** 是否显示通知 */
+    var showNotification by mutableStateOf(false)
+
+    /** 通知任务 */
+    private var notificationJob: kotlinx.coroutines.Job? = null
+
+    /**
+     * 显示通知消息
+     * @param message 通知消息内容
+     * @param duration 显示时长（毫秒），默认3秒
+     */
+    fun showNotification(message: String, duration: Long = 3000L) {
+        notificationJob?.cancel()
+        notificationMessage = message
+        showNotification = true
+
+        notificationJob = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main).launch {
+            kotlinx.coroutines.delay(duration)
+            showNotification = false
+        }
+    }
+
     /** 保存抄写字幕的配置信息 */
     fun saveTypingSubtitlesState() {
         runBlocking {

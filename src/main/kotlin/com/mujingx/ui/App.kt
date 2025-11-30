@@ -218,6 +218,8 @@ fun App(
                                         SubtitleScreen(
                                             subtitlesState = subtitlesState,
                                             globalState = appState.global,
+                                            playerState = playerState,
+                                            wordScreenState = wordState,
                                             audioSet = appState.localAudioSet,
                                             saveSubtitlesState = { subtitlesState.saveTypingSubtitlesState() },
                                             saveGlobalState = { appState.saveGlobalState() },

@@ -71,6 +71,14 @@ fun rememberCtrl(): String = remember {
     if (isMacOS()) "⌘" else "Ctrl"
 }
 
+val LocalAudioSet = staticCompositionLocalOf<MutableSet<String>> {
+    error("LocalAudioSet isn't provided")
+}
+
+@Composable
+fun rememberAudioSet(): MutableSet<String> = remember {
+    mutableSetOf()
+}
 
 @Composable
 fun scrollbarStyle(): ScrollbarStyle {

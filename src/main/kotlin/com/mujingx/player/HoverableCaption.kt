@@ -20,6 +20,7 @@
 package com.mujingx.player
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
@@ -61,8 +62,8 @@ fun HoverableText(
     onPopupHoverChanged: (Boolean) -> Unit = {},
     addWord: (Word) -> Unit = {},
     addToFamiliar: (Word) -> Unit = {},
-
-    ) {
+    onClick: () -> Unit = {},
+) {
     var expanded by remember { mutableStateOf(false) }
     var isInPopup by remember { mutableStateOf(false) }
     val density = LocalDensity.current
@@ -78,6 +79,12 @@ fun HoverableText(
             style = style,
             fontFamily = fontFamily,
             modifier = Modifier
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null // 不显示点击波纹效果
+                ) {
+                    onClick()
+                }
                 .background(
                     if (expanded) hoverColor
                     else Color.Transparent
@@ -284,6 +291,7 @@ fun HoverableCaption(
  * @param alwaysActive 是否始终激活悬停功能
  *   - true: 始终可以悬停查看单词（用于 SubtitleHoverableCaption）
  *   - false: 只在字幕可见时（color != Color.Transparent）才激活悬停功能（用于 VideoPlayer 的 HoverableCaption）
+ * @param onClick 点击单词时的回调函数，用于字幕浏览器界面切换当前字幕索引等操作，视频播放器界面不需要
  *
  * 实现细节：
  * - 使用正则表达式按空格分割文本为单词
@@ -305,6 +313,7 @@ private fun renderCaptionLine(
     addWord: (Word) -> Unit,
     addToFamiliar: (Word) -> Unit,
     alwaysActive: Boolean = false,
+    onClick: () -> Unit = {},
 ) {
     Row (
         Modifier
@@ -347,6 +356,7 @@ private fun renderCaptionLine(
                         onPopupHoverChanged = onPopupHoverChanged,
                         addWord = addWord,
                         addToFamiliar = addToFamiliar,
+                        onClick = onClick,
                     )
                 }
 
@@ -385,6 +395,11 @@ fun SubtitleHoverableCaption(
      playAudio: (String) -> Unit,
      mediaPath: String = "",
      showNotification: (String, Long) -> Unit = { _, _ -> },
+     index: Int,
+     currentIndex: Int,
+     currentIndexChanged: (Int) -> Unit,
+     multipleLines: com.mujingx.ui.subtitlescreen.MultipleLines,
+     focusRequester: androidx.compose.ui.focus.FocusRequester,
 ){
     val scope = rememberCoroutineScope()
 
@@ -398,6 +413,14 @@ fun SubtitleHoverableCaption(
         playerState = playerState,
         onPopupHoverChanged ={},
         alwaysActive = true,
+        onClick = {
+            // 点击单词时切换 currentIndex，模拟 BasicTextField 的行为
+            if (!multipleLines.enabled && currentIndex != index) {
+                currentIndexChanged(index)
+                // 请求焦点，确保与 BasicTextField 的行为一致
+                focusRequester.requestFocus()
+            }
+        },
         addWord = { word ->
             scope.launch {
                 try {

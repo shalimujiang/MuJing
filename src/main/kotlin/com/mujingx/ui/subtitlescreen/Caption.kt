@@ -207,6 +207,11 @@ fun Caption(
             playAudio = playAudio,
             mediaPath = mediaPath,
             showNotification = showNotification,
+            index = index,
+            currentIndex = currentIndex,
+            currentIndexChanged = currentIndexChanged,
+            multipleLines = multipleLines,
+            focusRequester = focusRequester,
         )
 
         // 快捷键 Ctrl + B 打开选择框

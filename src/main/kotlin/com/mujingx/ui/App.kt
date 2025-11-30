@@ -308,10 +308,11 @@ fun App(
                         scope.launch(Dispatchers.IO) {
                             delay(5000)
                             val result = autoDetectingUpdates(BuildConfig.APP_VERSION)
-                            if (result.first && result.second != appState.global.ignoreVersion) {
+                            if (result.hasUpdate && result.version != appState.global.ignoreVersion) {
                                 appState.showUpdateDialog = true
-                                appState.latestVersion = result.second
-                                appState.releaseNote = result.third
+                                appState.latestVersion = result.version
+                                appState.releaseNote = result.releaseNote
+                                appState.downloadUrl = result.downloadUrl
                             }
                         }
                     }
@@ -759,6 +760,7 @@ private fun FrameWindowScope.WindowMenuBar(
         Item("检查更新${if(isWindows) "(U)" else ""}", mnemonic = 'U', onClick = {
             appState.showUpdateDialog = true
             appState.latestVersion = ""
+            appState.downloadUrl = ""
         })
         if(!isMacOS()){
             var aboutDialogVisible by remember { mutableStateOf(false) }
@@ -855,7 +857,8 @@ fun MenuDialogs(state: AppState) {
             ignore = {
                 state.global.ignoreVersion = it
                 state.saveGlobalState()
-            }
+            },
+            downloadUrl = state.downloadUrl
         )
     }
 }

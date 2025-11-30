@@ -108,6 +108,9 @@ class AppState {
     /** 版本说明 **/
     var releaseNote by mutableStateOf("")
 
+    /** 下载地址 **/
+    var downloadUrl by mutableStateOf("")
+
     /** 本地缓存的单词发音列表 */
     var localAudioSet = loadAudioSet()
 

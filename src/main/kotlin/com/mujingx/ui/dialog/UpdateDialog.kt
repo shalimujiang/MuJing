@@ -63,6 +63,7 @@ fun UpdateDialog(
     latestVersion:String,
     releaseNote:String,
     ignore:(String) -> Unit,
+    downloadUrl:String = "",
 ) {
     DialogWindow(
         title = "检查更新",
@@ -83,6 +84,7 @@ fun UpdateDialog(
             var downloadable by remember { mutableStateOf(latestVersion.isNotEmpty()) }
             var body by remember { mutableStateOf("") }
             var releaseTagName by remember { mutableStateOf("") }
+            var downloadSourceUrl by remember { mutableStateOf(downloadUrl) }
 
             suspend fun detectingUpdates(version: String) {
                 val client = HttpClient {
@@ -100,7 +102,7 @@ fun UpdateDialog(
                 }
 
                 // 优先访问mujingx.com版本检测API
-                    val mujingApiUrl = "https://mujingx.com/api/version/latest"
+                val mujingApiUrl = "https://mujingx.com/api/version/latest"
                 val githubApiUrl = "https://api.github.com/repos/tangshimin/mujing/releases/latest"
                 val githubHeaderName = "Accept"
                 val githubHeaderValue = "application/vnd.github.v3+json"
@@ -124,6 +126,7 @@ fun UpdateDialog(
                             body = if (releaseVersion > currentVersion) {
                                 downloadable = true
                                 releaseTagName = releases.tag_name
+                                downloadSourceUrl = "https://mujingx.com/download"
                                 val contentBody = releases.body + ""
                                 contentBody
                             } else {
@@ -165,6 +168,7 @@ fun UpdateDialog(
                                 body = if (releaseVersion > currentVersion) {
                                     downloadable = true
                                     releaseTagName = releases.tag_name
+                                    downloadSourceUrl = "https://github.com/tangshimin/mujing/releases"
                                     var releaseContent = "最新版本：${releases.tag_name}\n"
                                     val contentBody = releases.body
                                     if (contentBody != null) {
@@ -297,10 +301,9 @@ fun UpdateDialog(
                     }
                     Spacer(Modifier.width(20.dp))
                     val uriHandler = LocalUriHandler.current
-                    val latest = "https://github.com/tangshimin/mujing/releases"
                     OutlinedButton(
                         onClick = {
-                            uriHandler.openUri(latest)
+                            uriHandler.openUri(downloadSourceUrl)
                             close()
                         },
                         enabled = downloadable
@@ -334,11 +337,21 @@ fun UpdateDialog(
 }
 
 /**
+ * 更新检测结果
+ */
+data class UpdateCheckResult(
+    val hasUpdate: Boolean,
+    val version: String,
+    val releaseNote: String,
+    val downloadUrl: String
+)
+
+/**
  * 自动检查更新
  * 优先级：先访问mujingx.com，如果失败则回退到GitHub.com
  */
 @OptIn(ExperimentalSerializationApi::class)
-suspend fun autoDetectingUpdates(version: String): Triple<Boolean, String, String> {
+suspend fun autoDetectingUpdates(version: String): UpdateCheckResult {
     val client = HttpClient {
         install(io.ktor.client.plugins.HttpTimeout) {
             requestTimeoutMillis = 5000
@@ -377,7 +390,7 @@ suspend fun autoDetectingUpdates(version: String): Triple<Boolean, String, Strin
                 var note = ""
                 val body = releases.body
                 if (releases.body != null) note += body
-                return Triple(true, releases.tag_name, note)
+                return UpdateCheckResult(true, releases.tag_name, note, "https://mujingx.com/download")
             }
         }
     } catch (exception: Exception) {
@@ -409,12 +422,12 @@ suspend fun autoDetectingUpdates(version: String): Triple<Boolean, String, Strin
                         note += body.substring(0, end)
                     }
                 }
-                return Triple(true, releases.tag_name, note)
+                return UpdateCheckResult(true, releases.tag_name, note, "https://github.com/tangshimin/mujing/releases")
             }
         }
     } catch (exception: Exception) {
         exception.printStackTrace()
-        return Triple(false, "", "")
+        return UpdateCheckResult(false, "", "", "")
     }
-    return Triple(false, "", "")
+    return UpdateCheckResult(false, "", "", "")
 }

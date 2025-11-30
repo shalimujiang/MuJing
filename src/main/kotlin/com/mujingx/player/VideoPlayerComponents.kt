@@ -715,7 +715,7 @@ fun NotificationMessage(
     ) {
         Surface(
             modifier = Modifier
-                .align(Alignment.TopStart)
+                .align(Alignment.TopEnd)
                 .padding(8.dp),
             elevation = 4.dp,
             shape = RoundedCornerShape(8.dp),

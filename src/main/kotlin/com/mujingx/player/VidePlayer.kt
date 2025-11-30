@@ -836,14 +836,14 @@ fun VideoPlayer(
 
                 // 在这里显示通知
                 if (state.showNotification) {
-                    val alignment = if(state.notificationType == NotificationType.INFO) Alignment.TopStart else Alignment.Center
+                    val alignment = if(state.notificationType == NotificationType.INFO) Alignment.TopEnd else Alignment.Center
                     NotificationMessage(
                         message = state.notificationMessage,
                         type = state.notificationType,
                         onDismiss = { state.showNotification = false },
                         modifier = Modifier
                             .align(alignment)
-                            .padding(start = 10.dp,top = if(isMacOS())54.dp else 10.dp)
+                            .padding(top = if(isMacOS())54.dp else 10.dp, end = 10.dp)
                     )
                 }
 

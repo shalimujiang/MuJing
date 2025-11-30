@@ -662,7 +662,7 @@ fun VideoPlayer(
                 hideControlBoxJob?.cancel()
                 hideControlBoxJob = scope.launch {
                     delay(10000)
-                    if (!isCaptionAreaHovered && !showDictPopup) {
+                    if (!isCaptionAreaHovered && !showDictPopup && !showSubtitleMenu && !settingsExpanded) {
                         controlBoxVisible = false
                     }
                 }

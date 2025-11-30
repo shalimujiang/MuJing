@@ -39,21 +39,12 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
-import com.mujingx.data.Dictionary
-import com.mujingx.data.Word
-import com.mujingx.data.deepCopy
-import com.mujingx.data.VocabularyType
-import com.mujingx.data.ExternalCaption
-import com.mujingx.data.loadMutableVocabulary
-import com.mujingx.data.saveVocabulary
-import com.mujingx.data.getFamiliarVocabularyFile
-import com.mujingx.data.loadVocabulary
+import com.mujingx.data.*
+import com.mujingx.player.danmaku.DisplayMode
+import com.mujingx.player.danmaku.WordDetail
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.Dispatchers
-import com.mujingx.player.danmaku.DisplayMode
-import com.mujingx.player.danmaku.WordDetail
 
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
@@ -236,7 +227,8 @@ fun HoverableCaption(
                     playerState,
                     onPopupHoverChanged,
                     addWord,
-                    addToFamiliar
+                    addToFamiliar,
+                    alwaysActive = false
                 )
 
             }
@@ -264,7 +256,8 @@ fun HoverableCaption(
                     playerState,
                     onPopupHoverChanged,
                     addWord,
-                    addToFamiliar
+                    addToFamiliar,
+                    alwaysActive = false
                 )
 
             }
@@ -272,6 +265,33 @@ fun HoverableCaption(
     }
 }
 
+/**
+ * 渲染字幕行，将文本按单词分割并渲染，支持单词悬停查看详情
+ *
+ * 该函数会智能地解析字幕文本，分离出单词和标点符号，并为每个单词添加悬停交互功能。
+ * 当用户将鼠标悬停在单词上时，会显示单词详情弹窗（如果词典中存在该单词）。
+ *
+ * @param line 要渲染的字幕文本行
+ * @param color 文本颜色，用于控制字幕的可见性
+ * @param hoverColor 鼠标悬停时的背景颜色，默认为 Color(0xFF29417F)
+ * @param style 文本样式，默认为 MaterialTheme.typography.h4
+ * @param fontFamily 字体族，可选参数
+ * @param playAudio 播放单词音频的回调函数，参数为单词文本
+ * @param playerState 播放器状态，用于管理单词详情弹窗
+ * @param onPopupHoverChanged 弹窗悬停状态改变的回调，参数为是否正在悬停
+ * @param addWord 添加单词到词库的回调函数
+ * @param addToFamiliar 添加单词到熟悉词库的回调函数
+ * @param alwaysActive 是否始终激活悬停功能
+ *   - true: 始终可以悬停查看单词（用于 SubtitleHoverableCaption）
+ *   - false: 只在字幕可见时（color != Color.Transparent）才激活悬停功能（用于 VideoPlayer 的 HoverableCaption）
+ *
+ * 实现细节：
+ * - 使用正则表达式按空格分割文本为单词
+ * - 每个单词会被进一步分解为：前导标点、单词主体、尾随标点
+ * - 单词主体部分会被包装为 HoverableText 组件，支持悬停交互
+ * - 标点符号直接渲染为普通 Text 组件
+ * - 单词之间自动添加空格（最后一个单词除外）
+ */
 @Composable
 private fun renderCaptionLine(
     line: String,
@@ -284,6 +304,7 @@ private fun renderCaptionLine(
     onPopupHoverChanged: (Boolean) -> Unit,
     addWord: (Word) -> Unit,
     addToFamiliar: (Word) -> Unit,
+    alwaysActive: Boolean = false,
 ) {
     Row (
         Modifier
@@ -319,8 +340,7 @@ private fun renderCaptionLine(
                         hoverColor = hoverColor,
                         style = style,
                         fontFamily = fontFamily,
-//                        isActive = color != Color.Transparent,
-                        isActive = true,
+                        isActive = if (alwaysActive) true else color != Color.Transparent,
                         playAudio = playAudio,
                         playerState = playerState,
                         modifier = Modifier,
@@ -358,7 +378,7 @@ private fun renderCaptionLine(
 @Composable
 fun SubtitleHoverableCaption(
      content: String,
-     caption: com.mujingx.data.Caption,
+     caption: Caption,
      fontFamily: FontFamily,
      playerState: PlayerState,
      wordScreenState: com.mujingx.ui.wordscreen.WordScreenState,
@@ -377,6 +397,7 @@ fun SubtitleHoverableCaption(
         playAudio = playAudio,
         playerState = playerState,
         onPopupHoverChanged ={},
+        alwaysActive = true,
         addWord = { word ->
             scope.launch {
                 try {

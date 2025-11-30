@@ -218,6 +218,7 @@ fun App(
                                         SubtitleScreen(
                                             subtitlesState = subtitlesState,
                                             globalState = appState.global,
+                                            audioSet = appState.localAudioSet,
                                             saveSubtitlesState = { subtitlesState.saveTypingSubtitlesState() },
                                             saveGlobalState = { appState.saveGlobalState() },
                                             isOpenSettings = appState.openSidebar,

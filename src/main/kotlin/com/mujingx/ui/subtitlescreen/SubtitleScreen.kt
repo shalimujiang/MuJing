@@ -21,6 +21,7 @@ package com.mujingx.ui.subtitlescreen
 
 import androidx.compose.foundation.*
 import androidx.compose.foundation.draganddrop.dragAndDropTarget
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -41,6 +42,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.input.key.*
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.AnnotatedString
@@ -62,6 +64,7 @@ import kotlinx.coroutines.launch
 import com.mujingx.player.*
 import com.mujingx.state.GlobalState
 import com.mujingx.theme.LocalCtrl
+import com.mujingx.tts.rememberAzureTTS
 import com.mujingx.ui.components.MacOSTitle
 import com.mujingx.ui.components.RemoveButton
 import com.mujingx.ui.components.Toolbar
@@ -74,6 +77,7 @@ import com.mujingx.ui.util.createDragAndDropTarget
 import com.mujingx.ui.util.findSubtitleFiles
 import com.mujingx.ui.util.parseSubtitles
 import com.mujingx.ui.util.shouldStartDragAndDrop
+import com.mujingx.ui.wordscreen.rememberPronunciation
 import java.awt.Rectangle
 import java.awt.Toolkit
 import java.io.File
@@ -89,6 +93,7 @@ val videoFormatList = listOf("mp4","mkv")
 fun SubtitleScreen(
     subtitlesState: SubtitlesState,
     globalState: GlobalState,
+    audioSet: MutableSet<String>,
     saveSubtitlesState: () -> Unit,
     saveGlobalState: () -> Unit,
     isOpenSettings: Boolean,
@@ -130,7 +135,9 @@ fun SubtitleScreen(
 
     var showExtSubOptions by remember { mutableStateOf(false) }
     val extSubList = remember { mutableStateListOf<Pair<String, File>>() }
-
+    val playerState = rememberPlayerState()
+    val pronunciation = rememberPronunciation()
+    val azureTTS = rememberAzureTTS()
 
     val startPiPPlayback: (MediaInfo) -> Unit = { playMedia ->
         if (pipWindow.isInPiPMode()) {
@@ -366,6 +373,24 @@ fun SubtitleScreen(
         subtitlesState.saveTypingSubtitlesState()
     }
 
+    /** 播放单词发音 */
+    val playAudio:(String) -> Unit = { word ->
+        val audioPath = getAudioPath(
+            word = word,
+            audioSet = audioSet,
+            addToAudioSet = {audioSet.add(it)},
+            pronunciation = pronunciation,
+            azureTTS = azureTTS,
+        )
+        playAudio(
+            word,
+            audioPath,
+            pronunciation = pronunciation,
+            globalState.audioVolume,
+            audioPlayerComponent,
+            changePlayerState = { },
+        )
+    }
 
     /**  使用按钮播放视频时调用的回调函数   */
     val playCaption: (Caption) -> Unit = { caption ->
@@ -636,7 +661,19 @@ fun SubtitleScreen(
             if (isOpenSettings) {
                 Divider(Modifier.fillMaxHeight().width(1.dp).padding(top = topPadding))
             }
-            Box(Modifier.fillMaxSize().padding(top = topPadding)) {
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .padding(top = topPadding)
+                    .pointerInput(Unit) {
+                        detectTapGestures(
+                            onTap = {
+                                // 点击空白区域时清除焦点，这样可以取消 BasicTextField 的文本选择
+                                focusManager.clearFocus()
+                            }
+                        )
+                    }
+            ) {
 
                 if (timedCaption.isNotEmpty()) {
                     val captionList = timedCaption.captionList
@@ -875,11 +912,13 @@ fun SubtitleScreen(
                                         visible = subtitlesState.currentCaptionVisible,
                                         multipleLines = multipleLines,
                                         next = next,
+                                        playerState = playerState,
                                         alpha = alpha,
                                         keyEvent = textFieldKeyEvent,
                                         focusRequester = textFieldRequester,
                                         selectable = selectable,
                                         exitSelection = {selectable = false},
+                                        playAudio = playAudio
                                     )
 
                                     Row(Modifier.width(48.dp).height(IntrinsicSize.Max)) {

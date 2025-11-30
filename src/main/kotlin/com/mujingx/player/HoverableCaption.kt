@@ -33,6 +33,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.onPointerEvent
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Popup
@@ -44,12 +46,16 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import com.mujingx.player.danmaku.DisplayMode
 import com.mujingx.player.danmaku.WordDetail
+import com.mujingx.tts.rememberAzureTTS
 
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun HoverableText(
     text: String,
     color : Color = Color.White,
+    hoverColor : Color = Color(0xFF29417F),// 悬停时的背景颜色,使用经典的文本选择颜色
+    style: TextStyle = MaterialTheme.typography.h4,
+    fontFamily: FontFamily? = null,
     isActive: Boolean = true,
     playerState: PlayerState,
     playAudio:(String) -> Unit = {},
@@ -58,7 +64,7 @@ fun HoverableText(
     addWord: (Word) -> Unit = {},
     addToFamiliar: (Word) -> Unit = {},
 
-) {
+    ) {
     var expanded by remember { mutableStateOf(false) }
     var isInPopup by remember { mutableStateOf(false) }
     val density = LocalDensity.current
@@ -71,10 +77,11 @@ fun HoverableText(
         Text(
             text = text,
             color = color,
-            style = MaterialTheme.typography.h4,
+            style = style,
+            fontFamily = fontFamily,
             modifier = Modifier
                 .background(
-                    if (expanded) Color(0xFF29417F) // 悬停时的背景颜色,使用经典的文本选择颜色
+                    if (expanded) hoverColor
                     else Color.Transparent
                 )
                 .hoverable(interactionSource)
@@ -212,7 +219,18 @@ fun HoverableCaption(
                 }
 
 
-                renderCaptionLine(line, color, playAudio, playerState, onPopupHoverChanged, addWord, addToFamiliar)
+                renderCaptionLine(
+                    line,
+                    color,
+                    hoverColor = Color(0xFF29417F),
+                    MaterialTheme.typography.h4,
+                    null,
+                    playAudio,
+                    playerState,
+                    onPopupHoverChanged,
+                    addWord,
+                    addToFamiliar
+                )
 
             }
         } else {
@@ -229,7 +247,18 @@ fun HoverableCaption(
                 }
 
 
-                renderCaptionLine(line, color, playAudio, playerState, onPopupHoverChanged, addWord, addToFamiliar)
+                renderCaptionLine(
+                    line,
+                    color,
+                    hoverColor = Color(0xFF29417F),
+                    MaterialTheme.typography.h4,
+                    fontFamily = null ,
+                    playAudio,
+                    playerState,
+                    onPopupHoverChanged,
+                    addWord,
+                    addToFamiliar
+                )
 
             }
         }
@@ -240,13 +269,19 @@ fun HoverableCaption(
 private fun renderCaptionLine(
     line: String,
     color: Color,
+    hoverColor : Color = Color(0xFF29417F),
+    style: TextStyle = MaterialTheme.typography.h4,
+    fontFamily: FontFamily? = null,
     playAudio: (String) -> Unit,
     playerState: PlayerState,
     onPopupHoverChanged: (Boolean) -> Unit,
     addWord: (Word) -> Unit,
     addToFamiliar: (Word) -> Unit,
 ) {
-    Row {
+    Row (
+        Modifier
+            .padding(horizontal = 3.dp)// 这里是为了给文本选择留出一点空间
+    ){
         // 改进的分词逻辑
         val words = line.split(Regex("\\s+")) // 按空格分割
         words.forEachIndexed { index, rawWord ->
@@ -264,7 +299,8 @@ private fun renderCaptionLine(
                     Text(
                         leadingPunctuation,
                         color = color,
-                        style = MaterialTheme.typography.h4
+                        style = style,
+                        fontFamily = fontFamily,
                     )
                 }
 
@@ -273,7 +309,11 @@ private fun renderCaptionLine(
                     HoverableText(
                         text = wordPart,
                         color = color,
-                        isActive = color != Color.Transparent,
+                        hoverColor = hoverColor,
+                        style = style,
+                        fontFamily = fontFamily,
+//                        isActive = color != Color.Transparent,
+                        isActive = true,
                         playAudio = playAudio,
                         playerState = playerState,
                         modifier = Modifier,
@@ -288,7 +328,8 @@ private fun renderCaptionLine(
                     Text(
                         trailingPunctuation,
                         color = color,
-                        style = MaterialTheme.typography.h4
+                        style = style,
+                        fontFamily = fontFamily,
                     )
                 }
 
@@ -297,10 +338,35 @@ private fun renderCaptionLine(
                     Text(
                         " ",
                         color = color,
-                        style = MaterialTheme.typography.h4
+                        style = style,
+                        fontFamily = fontFamily,
                     )
                 }
             }
         }
     }
+}
+
+
+@Composable
+fun SubtitleHoverableCaption(
+     content: String,
+     fontFamily: FontFamily,
+     playerState: PlayerState,
+     playAudio: (String) -> Unit,
+){
+
+
+    renderCaptionLine(
+        line = content,
+        hoverColor = Color.Transparent,
+        color = Color.Transparent,
+        style = MaterialTheme.typography.h5,
+        fontFamily = fontFamily,
+        playAudio = playAudio,
+        playerState = playerState,
+        onPopupHoverChanged ={},
+        addWord = {},
+        addToFamiliar = {}
+    )
 }

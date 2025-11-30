@@ -33,6 +33,7 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.input.key.*
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -43,6 +44,8 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import com.mujingx.data.Caption
+import com.mujingx.player.PlayerState
+import com.mujingx.player.SubtitleHoverableCaption
 import kotlinx.coroutines.launch
 import com.mujingx.player.isMacOS
 import com.mujingx.ui.util.rememberMonospace
@@ -61,6 +64,8 @@ import com.mujingx.ui.util.rememberMonospace
  * @param multipleLines 是否启用多行字幕功能
  * @param alpha 透明度 0.0f - 1.0f 之间 越小颜色越透明，越大颜色越深。
  * if currentIndex == index then 1.0f else 0.74f
+ * @param next 下一个字幕
+ * @param playerState 播放器状态
  * @param keyEvent 快捷键事件处理
  * @param focusRequester 焦点请求器
  * @param selectable 是否可以选择文本
@@ -78,13 +83,16 @@ fun Caption(
     visible: Boolean = true,
     multipleLines: MultipleLines,
     next: () -> Unit,
-//    updateCaptionBounds: (Rect) -> Unit,
+    playerState: PlayerState,
     alpha: Float,
     keyEvent: (KeyEvent) -> Boolean,
     focusRequester: FocusRequester,
     selectable: Boolean = false,
     exitSelection: () -> Unit,
+    playAudio: (String) -> Unit,
 ) {
+    val focusManager = LocalFocusManager.current
+
     Box(Modifier.width(IntrinsicSize.Max)) {
 
         val scope = rememberCoroutineScope()
@@ -95,6 +103,7 @@ fun Caption(
         var textFieldValue by remember { mutableStateOf("") }
         val selectRequester = remember { FocusRequester() }
         val contentColor = setColor(index, currentIndex, multipleLines, isTranscribe, visible, alpha, notWroteCaptionVisible)
+
 
 
         /** 检查输入的回调函数 */
@@ -148,7 +157,15 @@ fun Caption(
                 .padding(bottom = 5.dp)
                 .align(Alignment.CenterStart)
                 .focusable(isTranscribe)
-                .onKeyEvent { keyEvent(it) }
+                .onKeyEvent {
+                    // 按 Esc 键清除焦点，取消文本选择
+                    if (it.key == Key.Escape && it.type == KeyEventType.KeyUp) {
+                        focusManager.clearFocus()
+                        true
+                    } else {
+                        keyEvent(it)
+                    }
+                }
                 .focusRequester(focusRequester)
                 .onFocusChanged {
                     if (it.isFocused) {
@@ -177,6 +194,13 @@ fun Caption(
                     .padding(bottom = 5.dp)
             )
         }
+
+        SubtitleHoverableCaption(
+            content = captionContent,
+            fontFamily = monospace,
+            playerState = playerState,
+            playAudio = playAudio,
+        )
 
         // 快捷键 Ctrl + B 打开选择框
         SelectableText(
@@ -238,7 +262,7 @@ private fun setColor(
 private fun buildAnnotatedString(
     captionContent: String,
     typingResult: MutableList<Pair<Char, Boolean>>,
-    monospace: FontFamily,
+    fontFamily: FontFamily,
     alpha: Float,
     remainCharsColor: Color
 ) : AnnotatedString {
@@ -250,7 +274,7 @@ private fun buildAnnotatedString(
                         color = MaterialTheme.colors.primary.copy(alpha = alpha),
                         fontSize = MaterialTheme.typography.h5.fontSize,
                         letterSpacing = MaterialTheme.typography.h5.letterSpacing,
-                        fontFamily = monospace,
+                        fontFamily = fontFamily,
                     )
                 ) {
                     append(char)
@@ -261,7 +285,7 @@ private fun buildAnnotatedString(
                         color = Color.Red,
                         fontSize = MaterialTheme.typography.h5.fontSize,
                         letterSpacing = MaterialTheme.typography.h5.letterSpacing,
-                        fontFamily = monospace,
+                        fontFamily = fontFamily,
                     )
                 ) {
                     if (char == ' ') {
@@ -280,7 +304,7 @@ private fun buildAnnotatedString(
                 color = remainCharsColor,
                 fontSize = MaterialTheme.typography.h5.fontSize,
                 letterSpacing = MaterialTheme.typography.h5.letterSpacing,
-                fontFamily = monospace,
+                fontFamily = fontFamily,
             )
         ) {
             append(remainChars)

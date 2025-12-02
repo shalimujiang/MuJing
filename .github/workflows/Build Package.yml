@@ -153,9 +153,5 @@ jobs:
             - [macOS x86_64 Intel 芯片(DMG)](https://github.com/${{ github.repository }}/releases/download/${{ env.TAG }}/MuJing-${{ env.TAG }}-x64.dmg)
             - [macOS aarch64 M 芯片(DMG)](https://github.com/${{ github.repository }}/releases/download/${{ env.TAG }}/MuJing-${{ env.TAG }}-aarch64.dmg)
           artifactErrorsFailBuild: false # 如果某个附件找不到，不要让整个 workflow 失败
-          # 'assets' 字段需要是多行字符串格式
-          assets: |
-            artifacts/windows-package-x64/*.msi:MuJing-${{ env.TAG }}.msi
-            artifacts/windows-package-portable-x64/*.zip:MuJing-${{ env.TAG }}.zip
-            artifacts/macos-package-x64/*.dmg:MuJing-${{ env.TAG }}-x64.dmg
-            artifacts/macos-package-aarch64/*.dmg:MuJing-${{ env.TAG }}-aarch64.dmg
+          # 使用 artifacts 字段上传文件
+          artifacts: "artifacts/windows-package-x64/*.msi,artifacts/windows-package-portable-x64/*.zip,artifacts/macos-package-x64/*.dmg,artifacts/macos-package-aarch64/*.dmg"

@@ -127,11 +127,17 @@ class TestRemoveConfigDependencies {
         // 找出版本不一致的依赖
         val versionMismatches = mutableListOf<String>()
         removeConfigJars.forEach { removeJar ->
-            val mujingJar = mujingJars.find { it.nameWithoutHash == removeJar.nameWithoutHash }
-            if (mujingJar != null && mujingJar.version != removeJar.version) {
-                versionMismatches.add(
-                    "${removeJar.nameWithoutHash}: MuJing=${mujingJar.version}, RemoveConfig=${removeJar.version}"
-                )
+            // 获取 MuJing 中所有同名的 jar（可能有多个版本）
+            val mujingJarsWithSameName = mujingJars.filter { it.nameWithoutHash == removeJar.nameWithoutHash }
+            if (mujingJarsWithSameName.isNotEmpty()) {
+                // 检查 RemoveConfig 的版本是否存在于 MuJing 的任何一个版本中
+                val hasMatchingVersion = mujingJarsWithSameName.any { it.version == removeJar.version }
+                if (!hasMatchingVersion) {
+                    val mujingVersions = mujingJarsWithSameName.map { it.version }.joinToString(", ")
+                    versionMismatches.add(
+                        "${removeJar.nameWithoutHash}: MuJing=[$mujingVersions], RemoveConfig=${removeJar.version}"
+                    )
+                }
             }
         }
 

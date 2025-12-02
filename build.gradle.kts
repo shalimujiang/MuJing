@@ -38,7 +38,12 @@ repositories {
 
 dependencies {
     implementation(compose.desktop.currentOs)
+
+    // filekit 0.12.0 带来的依赖版本控制
+    // filekit 0.12.0 依赖 kotlinx-serialization-core:1.7.3，但我们需要使用更新的版本
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-core:1.9.0")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.3.2")
+
     implementation ("org.jetbrains.compose.material:material-icons-extended:1.0.1")
     implementation("io.github.microutils:kotlin-logging:2.1.21")
     implementation("uk.co.caprica:vlcj:4.11.0")
@@ -62,6 +67,7 @@ dependencies {
     implementation ("net.java.dev.jna:jna-platform:5.14.0")
     implementation ("ch.qos.logback:logback-classic:1.5.13")
     implementation("net.bramp.ffmpeg:ffmpeg:0.8.0")
+    // 使用的是本地构建的 Filekit 0.12.0 版本
     implementation("io.github.vinceglb:filekit-dialogs:0.12.0")
     implementation("io.github.vinceglb:filekit-dialogs-compose:0.12.0")
 

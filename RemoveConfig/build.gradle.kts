@@ -6,16 +6,20 @@ plugins {
     id("org.jetbrains.compose")
     // compose-compiler
     id("org.jetbrains.kotlin.plugin.compose")
+    kotlin("plugin.serialization")
+
 }
 
 group = "com.mujingx"
 version = "1.0"
 
 repositories {
+    mavenLocal()
+    google()
     mavenCentral()
     maven("https://maven.pkg.jetbrains.space/public/p/compose/dev")
-    google()
 }
+
 
 dependencies {
     // Note, if you develop a library, you should use compose.desktop.common.
@@ -24,8 +28,11 @@ dependencies {
     // With compose.desktop.common you will also lose @Preview functionality
     implementation(compose.desktop.currentOs)
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
-    // 强制使用与 MuJing 一致的版本（MuJing 通过 filekit 0.12.0 引入了 1.9.0 版本）
+
+    // 强制使用与 MuJing 一致的版本
+    // filekit 0.12.0 通过 Compose 1.9.3 引入了不同命名空间的包，需要显式声明版本以保持一致
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-core:1.9.0")
+
 }
 
 compose.desktop {

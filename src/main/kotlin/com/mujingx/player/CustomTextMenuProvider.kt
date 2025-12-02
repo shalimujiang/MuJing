@@ -206,7 +206,7 @@ private fun calculateMenuPosition(
  * 在 macOS 上打开系统词典查询指定单词
  * @param word 要查询的单词
  */
-private fun openMacOSDictionary(word: String) {
+fun openMacOSDictionary(word: String) {
     try {
         val process = ProcessBuilder("open", "dict://$word").start()
         // 可选：等待进程完成并检查结果

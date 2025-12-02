@@ -19,12 +19,14 @@
 
 package com.mujingx.player
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.MaterialTheme
+import androidx.compose.material.Surface
 import androidx.compose.material.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -46,6 +48,13 @@ import com.mujingx.player.danmaku.WordDetail
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import androidx.compose.ui.platform.LocalUriHandler
+import java.awt.Toolkit
+import java.awt.datatransfer.StringSelection
+import java.net.URLEncoder
+import java.nio.charset.Charset
+import androidx.compose.material.Button
+import androidx.compose.material.ButtonDefaults
 
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
@@ -68,6 +77,7 @@ fun HoverableText(
     var isInPopup by remember { mutableStateOf(false) }
     val density = LocalDensity.current
     val scope = rememberCoroutineScope()
+    val uriHandler = LocalUriHandler.current
 
 
     Box(modifier = Modifier) {
@@ -113,6 +123,11 @@ fun HoverableText(
         )
 
         if (expanded && isActive) {
+            // 处理前面的分词错误，去掉结尾的 --
+            if(text.endsWith("--")){
+                text.dropLast(2)
+            }
+
             val dictWord = Dictionary.query(text.lowercase().trim())
 
             Popup(
@@ -149,17 +164,151 @@ fun HoverableText(
                                 playAudio =playAudio ,
                             )
                         }else{
-                            Box(
+                            Surface(
                                 modifier = Modifier
                                     .fillMaxSize()
                                     .background(MaterialTheme.colors.background),
-                                contentAlignment = Alignment.Center
+                                border = BorderStroke(1.dp, MaterialTheme.colors.onSurface.copy(alpha = 0.12f))
                             ) {
-                                Text(
-                                    text = "内置词典里面没有 \"$text\"",
-                                    style = MaterialTheme.typography.body1,
-                                    color = Color.White
-                                )
+                                Column(
+                                    modifier = Modifier.padding(16.dp),
+                                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Text(
+                                        text = "内置词典里面没有 \"$text\"",
+                                        style = MaterialTheme.typography.body1,
+                                        color =  MaterialTheme.colors.onBackground
+                                    )
+
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.Center
+                                    ){
+                                        // 复制按钮
+                                        Button(
+                                            onClick = {
+                                                val stringSelection = StringSelection(text)
+                                                val clipboard = Toolkit.getDefaultToolkit().systemClipboard
+                                                clipboard.setContents(stringSelection, null)
+                                            },
+                                            colors = ButtonDefaults.buttonColors(
+                                                backgroundColor = MaterialTheme.colors.primary
+                                            ),
+//                                            modifier = Modifier.fillMaxWidth()
+                                        ) {
+                                            Text("复制", color = Color.White)
+                                        }
+                                    }
+
+
+                                    Text(
+                                        text = "网络查词:",
+                                        style = MaterialTheme.typography.body2,
+                                        color = MaterialTheme.colors.onBackground.copy(alpha = 0.7f)
+                                    )
+
+
+                                    // 网络查词按钮组
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        Button(
+                                            onClick = {
+                                                val encoded = URLEncoder.encode(text, Charset.forName("UTF-8"))
+                                                uriHandler.openUri("https://www.youdao.com/result?word=$encoded&lang=en")
+                                            },
+                                            colors = ButtonDefaults.buttonColors(
+                                                backgroundColor = MaterialTheme.colors.secondary
+                                            ),
+                                            modifier = Modifier.weight(1f)
+                                        ) {
+                                            Text("有道", color = Color.White)
+                                        }
+
+                                        Button(
+                                            onClick = {
+                                                val encoded = URLEncoder.encode(text, Charset.forName("UTF-8"))
+                                                uriHandler.openUri("https://dictionary.cambridge.org/dictionary/english-chinese-simplified/$encoded")
+                                            },
+                                            colors = ButtonDefaults.buttonColors(
+                                                backgroundColor = MaterialTheme.colors.secondary
+                                            ),
+                                            modifier = Modifier.weight(1f)
+                                        ) {
+                                            Text("剑桥", color = Color.White)
+                                        }
+                                    }
+
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        Button(
+                                            onClick = {
+                                                val encoded = URLEncoder.encode(text, Charset.forName("UTF-8"))
+                                                uriHandler.openUri("https://www.merriam-webster.com/dictionary/$encoded")
+                                            },
+                                            colors = ButtonDefaults.buttonColors(
+                                                backgroundColor = MaterialTheme.colors.secondary
+                                            ),
+                                            modifier = Modifier.weight(1f)
+                                        ) {
+                                            Text("韦氏", color = Color.White)
+                                        }
+
+                                        Button(
+                                            onClick = {
+                                                val encoded = URLEncoder.encode(text, Charset.forName("UTF-8"))
+                                                uriHandler.openUri("https://www.vocabulary.com/dictionary/$encoded")
+                                            },
+                                            colors = ButtonDefaults.buttonColors(
+                                                backgroundColor = MaterialTheme.colors.secondary
+                                            ),
+                                            modifier = Modifier.weight(1f)
+                                        ) {
+                                            Text("Vocabulary", color = Color.White)
+                                        }
+                                    }
+
+
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        Button(
+                                            onClick = {
+                                                val encoded = URLEncoder.encode(text, Charset.forName("UTF-8"))
+                                                uriHandler.openUri("https://www.oxfordlearnersdictionaries.com/definition/english/$encoded")
+                                            },
+                                            colors = ButtonDefaults.buttonColors(
+                                                backgroundColor = MaterialTheme.colors.secondary
+                                            ),
+                                            modifier = Modifier.weight(1f)
+                                        ) {
+                                            Text("Oxford", color = Color.White)
+                                        }
+
+                                        if (isMacOS()) {
+                                            Button(
+                                                onClick = {
+                                                    openMacOSDictionary(text)
+                                                },
+                                                colors = ButtonDefaults.buttonColors(
+                                                    backgroundColor = MaterialTheme.colors.secondary
+                                                ),
+                                                modifier = Modifier.weight(1f)
+                                            ) {
+                                                Text("系统词典", color = Color.White)
+                                            }
+                                        } else {
+                                            Spacer(modifier = Modifier.weight(1f))
+                                        }
+
+                                    }
+
+                                }
+
                             }
                         }
 

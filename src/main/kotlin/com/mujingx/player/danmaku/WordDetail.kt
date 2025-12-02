@@ -145,7 +145,7 @@ fun WordDetail(
                     Text(
                         text = word.value,
                         style = MaterialTheme.typography.h5,
-                        color = Color.White,
+                        color =  MaterialTheme.colors.onBackground,
                     )
                 }
                 IconButton(

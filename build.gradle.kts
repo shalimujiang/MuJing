@@ -22,7 +22,7 @@ plugins {
 }
 
 group = "com.mujingx"
-version = "2.9.1"
+version = "2.12.0"
 
 buildConfig {
     buildConfigField("APP_NAME", provider { "幕境" })

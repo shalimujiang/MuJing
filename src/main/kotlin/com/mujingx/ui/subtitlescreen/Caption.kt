@@ -44,6 +44,7 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import com.mujingx.data.Caption
+import com.mujingx.player.CustomTextMenuProvider
 import com.mujingx.player.PlayerState
 import com.mujingx.player.SubtitleHoverableCaption
 import kotlinx.coroutines.launch
@@ -144,46 +145,48 @@ fun Caption(
 
             }
         }
-
-        BasicTextField(
-            value = if (isTranscribe) textFieldValue else captionContent,
-            onValueChange = { handleInput(it) },
-            singleLine = true,
-            readOnly = !isTranscribe,
-            cursorBrush = SolidColor(MaterialTheme.colors.primary),
-            textStyle = MaterialTheme.typography.h5.copy(
-                color = if (!isTranscribe) contentColor else Color.Transparent,
-                fontFamily = monospace
-            ),
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 5.dp)
-                .align(Alignment.CenterStart)
-                .focusable(isTranscribe)
-                .onKeyEvent {
-                    // 按 Esc 键清除焦点，取消文本选择
-                    if (it.key == Key.Escape && it.type == KeyEventType.KeyUp) {
-                        focusManager.clearFocus()
-                        true
-                    } else {
-                        keyEvent(it)
-                    }
-                }
-                .focusRequester(focusRequester)
-                .onFocusChanged {
-                    if (it.isFocused) {
-                        scope.launch {
-                            if (!multipleLines.enabled) {
-                                currentIndexChanged(index)
-                            }
-
+        CustomTextMenuProvider {
+            BasicTextField(
+                value = if (isTranscribe) textFieldValue else captionContent,
+                onValueChange = { handleInput(it) },
+                singleLine = true,
+                readOnly = !isTranscribe,
+                cursorBrush = SolidColor(MaterialTheme.colors.primary),
+                textStyle = MaterialTheme.typography.h5.copy(
+                    color = if (!isTranscribe) contentColor else Color.Transparent,
+                    fontFamily = monospace
+                ),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 5.dp)
+                    .align(Alignment.CenterStart)
+                    .focusable(isTranscribe)
+                    .onKeyEvent {
+                        // 按 Esc 键清除焦点，取消文本选择
+                        if (it.key == Key.Escape && it.type == KeyEventType.KeyUp) {
+                            focusManager.clearFocus()
+                            true
+                        } else {
+                            keyEvent(it)
                         }
-                    } else if (textFieldValue.isNotEmpty()) {
-                        typingResult.clear()
-                        textFieldValue = ""
                     }
-                }
-        )
+                    .focusRequester(focusRequester)
+                    .onFocusChanged {
+                        if (it.isFocused) {
+                            scope.launch {
+                                if (!multipleLines.enabled) {
+                                    currentIndexChanged(index)
+                                }
+
+                            }
+                        } else if (textFieldValue.isNotEmpty()) {
+                            typingResult.clear()
+                            textFieldValue = ""
+                        }
+                    }
+            )
+        }
+
         // 抄写字幕
         if (isTranscribe) {
             Text(

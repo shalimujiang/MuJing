@@ -24,6 +24,8 @@ dependencies {
     // With compose.desktop.common you will also lose @Preview functionality
     implementation(compose.desktop.currentOs)
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
+    // 强制使用与 MuJing 一致的版本（MuJing 通过 filekit 0.12.0 引入了 1.9.0 版本）
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-core:1.9.0")
 }
 
 compose.desktop {

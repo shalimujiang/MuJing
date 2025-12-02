@@ -119,13 +119,6 @@ jobs:
     permissions:
       contents: write
     steps:
-      - name: Generate a token
-        id: generate-token
-        uses: actions/create-github-app-token@v2
-        with:
-          app-id: ${{ vars.APP_ID }}
-          private-key: ${{ secrets.APP_PRIVATE_KEY }}
-
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
@@ -133,7 +126,11 @@ jobs:
 
       - name: Get Tag
         id: get_tag
-        run: echo "TAG=${{ github.ref_name }}" >> $GITHUB_ENV
+        run: |
+          TAG=${{ github.ref_name }}
+          VERSION=${TAG#v}  # 去掉 v 前缀，得到纯版本号
+          echo "TAG=$TAG" >> $GITHUB_ENV
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
 
       - name: Draft Release
         uses: ncipollo/release-action@v1
@@ -143,15 +140,15 @@ jobs:
           generateReleaseNotes: false
           name: ${{ env.TAG }} # 设置 Release 的标题为 Tag 名称
           tag: ${{ env.TAG }}
-          token: ${{ steps.generate-token.outputs.token }}
+          token: ${{ secrets.GITHUB_TOKEN }}
           body: |
             ---
             ### Windows 版本下载
-            - [Windows 安装包 (MSI)](https://github.com/${{ github.repository }}/releases/download/${{ env.TAG }}/MuJing-${{ env.TAG }}.msi)
-            - [Windows 绿色版 (ZIP)](https://github.com/${{ github.repository }}/releases/download/${{ env.TAG }}/MuJing-${{ env.TAG }}.zip)
+            - [Windows 安装包 (MSI)](https://github.com/${{ github.repository }}/releases/download/${{ env.TAG }}/MuJing-${{ env.VERSION }}.msi)
+            - [Windows 绿色版 (ZIP)](https://github.com/${{ github.repository }}/releases/download/${{ env.TAG }}/MuJing-${{ env.VERSION }}.zip)
             ### macOS 版本下载
-            - [macOS x86_64 Intel 芯片(DMG)](https://github.com/${{ github.repository }}/releases/download/${{ env.TAG }}/MuJing-${{ env.TAG }}-x64.dmg)
-            - [macOS aarch64 M 芯片(DMG)](https://github.com/${{ github.repository }}/releases/download/${{ env.TAG }}/MuJing-${{ env.TAG }}-aarch64.dmg)
+            - [macOS x86_64 Intel 芯片(DMG)](https://github.com/${{ github.repository }}/releases/download/${{ env.TAG }}/MuJing-${{ env.VERSION }}-x64.dmg)
+            - [macOS aarch64 M 芯片(DMG)](https://github.com/${{ github.repository }}/releases/download/${{ env.TAG }}/MuJing-${{ env.VERSION }}-aarch64.dmg)
           artifactErrorsFailBuild: false # 如果某个附件找不到，不要让整个 workflow 失败
           # 使用 artifacts 字段上传文件
           artifacts: "artifacts/windows-package-x64/*.msi,artifacts/windows-package-portable-x64/*.zip,artifacts/macos-package-x64/*.dmg,artifacts/macos-package-aarch64/*.dmg"

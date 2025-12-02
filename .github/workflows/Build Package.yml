@@ -12,7 +12,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ windows-latest, macos-15, macos-latest ]
+        os: [ windows-latest, macos-15-intel, macos-latest ]
         include:
           - os: windows-latest
             arch: x64
@@ -20,7 +20,7 @@ jobs:
             packageTask: light
             artifactPath: build/compose/binaries/main/app/*.msi
             artifactName: windows-package-x64
-          - os: macos-15
+          - os: macos-15-intel
             arch: x64
             name: macOS x86_64
             packageTask: packageDmg
@@ -90,6 +90,8 @@ jobs:
           if ($version -eq "" -or $version -eq "refs/heads/main") {
             $version = (Get-Content gradle.properties | Select-String "version=" | ForEach-Object { $_.ToString().Split('=')[1].Trim() })
           }
+          # 去掉 v 前缀
+          $version = $version -replace '^v', ''
           # 统一命名为 MuJing-版本号.zip
           $zipFile = "build/compose/binaries/main/app/MuJing-$version.zip"
           Write-Host "Creating portable package: $zipFile"
@@ -150,5 +152,5 @@ jobs:
             - [macOS x86_64 Intel 芯片(DMG)](https://github.com/${{ github.repository }}/releases/download/${{ env.TAG }}/MuJing-${{ env.VERSION }}-x64.dmg)
             - [macOS aarch64 M 芯片(DMG)](https://github.com/${{ github.repository }}/releases/download/${{ env.TAG }}/MuJing-${{ env.VERSION }}-aarch64.dmg)
           artifactErrorsFailBuild: false # 如果某个附件找不到，不要让整个 workflow 失败
-          # 使用 artifacts 字段上传文件
-          artifacts: "artifacts/windows-package-x64/*.msi,artifacts/windows-package-portable-x64/*.zip,artifacts/macos-package-x64/*.dmg,artifacts/macos-package-aarch64/*.dmg"
+          # 使用 artifacts 字段上传文件 - 使用通配符匹配所有文件
+          artifacts: "artifacts/**/*.msi,artifacts/**/*.zip,artifacts/**/*.dmg"

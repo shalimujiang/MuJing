@@ -69,6 +69,14 @@ jobs:
           # 解决 Windows 环境下中文字符显示为问号的问题
           echo "GRADLE_OPTS=-Dfile.encoding=UTF-8 -Dstdout.encoding=UTF-8 -Dstderr.encoding=UTF-8" >> $env:GITHUB_ENV
 
+      # Clone and publish FileKit locally
+      - name: Clone and Publish FileKit
+        run: |
+          git clone https://github.com/tangshimin/FileKit.git
+          cd FileKit
+          chmod +x ./gradlew
+          ./gradlew :filekit-core:publishJvmPublicationToMavenLocal :filekit-dialogs:publishJvmPublicationToMavenLocal :filekit-dialogs-compose:publishJvmPublicationToMavenLocal -x jvmTest
+          cd ..
 
       # Build Desktop Packaged application
       - name: Desktop App Package

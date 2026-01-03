@@ -597,8 +597,7 @@ object Dictionary{
                         val word = mapToWord(result)
                         words.add(word)
                     }
-                    // 关闭语句（use 会自动关闭，这里显式调用是为了确保资源释放）
-                    statement.close()
+                    // use 会自动关闭资源，无需手动调用 close()
                 }
             }
 

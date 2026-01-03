@@ -45,58 +45,99 @@ import javax.imageio.ImageIO
 import javax.swing.JFrame
 import javax.swing.JOptionPane
 
-/** 所有界面共享的状态 */
+/**
+ * 应用全局状态类
+ * 
+ * 这是幕境应用最重要的状态管理类，管理整个应用的全局状态
+ * 所有界面都可以访问和修改这个状态
+ * 
+ * Compose 状态管理思想：
+ * - 单一数据源：所有状态集中在一个地方管理
+ * - 状态提升：子组件不直接管理状态，而是通过参数接收和回调修改
+ * - 可观察性：状态变化时，使用该状态的UI会自动重新渲染
+ * 
+ * @ExperimentalSerializationApi 使用实验性的序列化功能
+ */
 @ExperimentalSerializationApi
 class AppState {
 
-    /** 全局状态里需要持久化的状态 */
+    /**
+     * 全局持久化状态
+     * 
+     * 包含需要保存到文件的设置，如主题、字体大小等
+     * 应用关闭时会保存，重新打开时会恢复
+     */
     var global: GlobalState = loadGlobalState()
 
-    /** Material 颜色 */
+    /**
+     * Material Design 颜色配置
+     * 
+     * 根据用户选择的主题生成颜色方案
+     * by mutableStateOf 使其成为可观察状态，颜色改变时UI会更新
+     */
     var colors by mutableStateOf(createColors(global))
 
-    /** 一个后台窗口，用于放置 VLC 组件在后台解析字幕列表  */
+    /**
+     * 后台视频播放器窗口
+     * 
+     * 用于在后台解析视频字幕，不显示给用户
+     * VLC（VideoLAN Client）是一个开源的视频播放库
+     */
     var videoPlayerWindow = createVideoPlayerWindow()
 
-    /** 困难词库 */
+    /**
+     * 困难词库
+     * 
+     * 存储用户标记为"困难"的单词
+     * 这些单词会在复习时增加出现频率
+     */
     var hardVocabulary = loadMutableVocabularyByName("HardVocabulary")
 
-    /** 最近生成的词库列表 */
+    /**
+     * 最近使用词库列表
+     * 
+     * 记录用户最近打开过的词库，方便快速访问
+     * 显示在主界面的侧边栏
+     */
     var recentList = readRecentList()
 
-    /** 打开侧边栏 */
+    /** 是否打开侧边栏（显示最近使用的词库列表） */
     var openSidebar by mutableStateOf(false)
 
-    /** 打开设置*/
+    /** 是否打开设置对话框 */
     var openSettings by mutableStateOf(false)
 
-    /** 是否显示等待窗口 */
+    /** 是否显示文件选择器加载动画 */
     var loadingFileChooserVisible by mutableStateOf(false)
 
-    /** 是否显示【新建词库】窗口 */
+    /** 是否显示【新建词库】对话框 */
     var newVocabulary by  mutableStateOf(false)
-    /** 是否显示【编辑词库】窗口 */
+    
+    /** 是否显示【编辑词库】对话框 */
     var editVocabulary by  mutableStateOf(false)
 
-    /** 是否显示【合并词库】窗口 */
+    /** 是否显示【合并词库】对话框 */
     var mergeVocabulary by mutableStateOf(false)
 
-    /** 是否显示【过滤词库】窗口 */
+    /** 是否显示【过滤词库】对话框 */
     var filterVocabulary by mutableStateOf(false)
 
-    /** 是否显示【导入词库到熟悉词库】窗口 */
+    /** 是否显示【导入词库到熟悉词库】对话框 */
     var importFamiliarVocabulary by mutableStateOf(false)
 
-    /** 是否显示【用文档生成词库】窗口 */
+    /** 是否显示【用文档生成词库】对话框 */
     var generateVocabularyFromDocument by mutableStateOf(false)
 
-    /** 是否显示【用字幕文件生成词库】窗口 */
+    /** 是否显示【用字幕文件生成词库】对话框 */
     var generateVocabularyFromSubtitles by mutableStateOf(false)
 
-    /** 是否显示【用视频生成词库】 窗口 */
+    /** 是否显示【用视频生成词库】对话框 */
     var generateVocabularyFromVideo by mutableStateOf(false)
 
+    /** 是否显示【生成字幕文件】对话框 */
     var showGenerateSrtDialog by mutableStateOf(false)
+    
+    /** 生成字幕的视频路径 */
     var generateSrtVideoPath by mutableStateOf("")
 
     /** 显示软件更新对话框 */

@@ -27,29 +27,58 @@ import java.util.*
 
 
 /**
- * 提取 Wikitionary 词条的发音
- * @param rawdata 文件是 raw-wiktextract-data.json，从 https://kaikki.org/dictionary/rawdata.html 下载的。
+ * 从 Wiktionary 原始数据中提取单词发音音频 URL
+ * 
+ * Wiktionary（维基词典）是维基百科的姊妹项目，提供多语言词典
+ * 这个函数从 Wiktionary 的原始数据文件中提取英语单词的发音链接
+ * 
+ * 数据来源：https://kaikki.org/dictionary/rawdata.html
+ * 文件名：raw-wiktextract-data.json
+ * 
+ * 工作流程：
+ * 1. 逐行读取 JSON 文件（每行是一个词条）
+ * 2. 过滤出英语词条
+ * 3. 检查该单词是否在本地词典中存在
+ * 4. 提取发音音频的 URL（MP3 或 OGG 格式）
+ * 5. 保存到 AudioUrls.json 文件
+ * 
+ * @param rawdata Wiktionary 原始数据文件
  */
 private fun extractedAudioUrls(rawdata:File) {
+    // 存储发音数据：单词 -> 发音列表
     val audios = mutableMapOf<String, MutableSet<Pronunciation>>()
+    
+    // 收集所有发音标签（如 UK、US、AU 等）
     val tags = mutableSetOf<String>()
-    var count = 1
+    
+    var count = 1  // 计数器，记录处理了多少行
+    
+    // JSON 解析配置：忽略未知字段
     val format = Json { ignoreUnknownKeys = true }
+    
+    // useLines：逐行读取文件，内存友好
     rawdata.useLines { lines ->
         lines.forEach { line ->
             try {
-
+                // 将 JSON 行解析为 WikitionaryItem 对象
                 val item = format.decodeFromString<WikitionaryItem>(line)
-                if(item.lang == "English"){
-                    val word = item.word.lowercase(Locale.getDefault())
+                
+                if(item.lang == "English"){  // 只处理英语词条
+                    val word = item.word.lowercase(Locale.getDefault())  // 转小写
                     print("Row ${count++}")
                     println("    $word")
+                    
+                    // 查询本地词典，检查单词是否存在
                     val result = Dictionary.query(word)
                     if (result != null) {
+                        // 遍历该单词的所有发音
                         item.sounds.forEach { sound ->
+                            // 收集发音标签
                             sound.tags.forEach { tag ->
                                 tags.add(tag)
                             }
+                            
+                            // 优先使用 MP3 格式
                             if (sound.mp3_url.isNotEmpty()) {
                                 val pronunciation = Pronunciation(sound.tags.first(), sound.mp3_url)
                                 val pronunciations = audios.get(word)
@@ -59,7 +88,7 @@ private fun extractedAudioUrls(rawdata:File) {
                                     pronunciations.add(pronunciation)
                                 }
 
-                            }else if(sound.ogg_url.isNotEmpty()){
+                            }else if(sound.ogg_url.isNotEmpty()){  // 其次使用 OGG 格式
                                 val pronunciation = Pronunciation(sound.tags.first(), sound.ogg_url)
                                 val pronunciations = audios.get(word)
                                 if (pronunciations == null) {
@@ -73,26 +102,36 @@ private fun extractedAudioUrls(rawdata:File) {
                         }
                     }
                 }else{
-                    println("lang:${item.lang}")
+                    println("lang:${item.lang}")  // 记录非英语词条
                 }
 
             } catch (_: Exception) {
+                // 忽略解析错误的行
             }
         }
     }
 
+    // 配置 JSON 输出格式
     val json = Json {
-        prettyPrint = true
-        encodeDefaults = true
+        prettyPrint = true      // 美化输出
+        encodeDefaults = true   // 包含默认值
     }
 
+    // 序列化并保存
     val jsonString = json.encodeToString(audios)
     val audioUrls = File("resources/common/AudioUrls.json")
     audioUrls.writeText(jsonString)
 }
 
 /**
- * Wikitionary 的词条,我只关注单词发音，就只映射了两个 Key。
+ * Wiktionary 词条数据类
+ * 
+ * 映射 Wiktionary 原始数据的 JSON 结构
+ * 只提取需要的字段（单词、语言、发音）
+ * 
+ * @property word 单词文本
+ * @property lang 语言，如 "English"
+ * @property sounds 发音列表
  */
 @Serializable
 data class WikitionaryItem(
@@ -102,7 +141,16 @@ data class WikitionaryItem(
 )
 
 /**
- * Wikitionary 词条的发音
+ * Wiktionary 发音项数据类
+ * 
+ * 表示一个单词的一种发音
+ * 可能包含多种音频格式（MP3、OGG）
+ * 
+ * @property audio 音频文件名
+ * @property text 发音的文本描述
+ * @property tags 标签列表，如 ["UK", "female"] 表示英式英语女声
+ * @property ogg_url OGG 格式音频的 URL
+ * @property mp3_url MP3 格式音频的 URL
  */
 @Serializable
 data class AudioItem(
@@ -114,9 +162,12 @@ data class AudioItem(
 )
 
 /**
- * 单词发音
- * @param tag 地区
- * @param url 发音的网址
+ * 单词发音数据类
+ * 
+ * 简化的发音信息，只包含地区标签和 URL
+ * 
+ * @property tag 地区/口音标签，如 "UK"（英式）、"US"（美式）、"AU"（澳式）
+ * @property url 音频文件的网址，可以直接播放或下载
  */
 @Serializable
 data class Pronunciation(
